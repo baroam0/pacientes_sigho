@@ -3,40 +3,55 @@ import sqlite3
 
 from renaper import obtener_token, consulta_renaper
 
-pacientes_txt = open("pacientes_sigho.txt", "r")
-array_pacientes = pacientes_txt.readlines()
+
+def importcvs(parametro):
+   cn = sqlite3.connect("datos.sqlite")
+   cursor = cn.cursor()
+   sql_query = "INSERT INTO paciente (migracionid, numerodocumento, sexoid, apellido, nombre, fechanacimiento) VALUES (?, ?, ?, ?, ?, ?)"
+   cursor.executemany(sql_query, parametro)
+   cn.commit()
+   cursor.close()
+   cn.close()
 
 
-def cndb(apellido, nombre, tipodocumento, numerodocumento, fechanacimiento, sexo, renaper):
-    cn = sqlite3.connect("datos.db")
+def consultadb():
+    cn = sqlite3.connect("datos.sqlite")
     cursor = cn.cursor()
-    sql_query = "INSERT INTO pacientessigho (apellido, nombre, tipodocumento, numerodocumento, fechanacimiento, sexo, renaper) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    data_tuple = (apellido, nombre, tipodocumento, numerodocumento, fechanacimiento, sexo, renaper)
-    cursor.execute(sql_query, data_tuple)
+    sql_query = "SELECT * FROM paciente WHERE encontrado IS NULL"
+    cursor.execute(sql_query)
+    results = cursor.fetchall()
+    return results
+
+
+def renaperizar(datos, dni):    
+    cn = sqlite3.connect("datos.sqlite")
+    cursor = cn.cursor()
+
+    tkn = obtener_token()
+
+    try:
+        print("***********************************************************************")
+        print(str(datos[2]), str(datos[3]))
+        datosrenaper = consulta_renaper(str(datos[2]), str(datos[3]),tkn)
+        print(datosrenaper)
+        tupla = (datosrenaper["apellido"], datosrenaper["nombres"] , datosrenaper["fechaNacimiento"], 1, str(dni))
+        
+        sqlstr = '''UPDATE paciente SET apellidorenaper = ?, nombrerenaper = ?, fechanacimientorenaper = ?, encontrado= ? WHERE numerodocumento = ?'''
+        cursor.execute(sqlstr, tupla)
+    except:
+        print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+
+        sql_query = '''UPDATE paciente SET encontrado=0 WHERE numerodocumento={}'''.format(str(dni))
+        print(sql_query)
+        cursor.execute(sql_query)
+
     cn.commit()
     cursor.close()
     cn.close()
 
 
-def consultadb(dni):
-    cn = sqlite3.connect("datos.db")
-    cursor = cn.cursor()
-    sql_query = "SELECT * FROM pacientessigho WHERE numerodocumento = ?"
-    data_tuple = (dni,)
-    cursor.execute(sql_query, data_tuple)
-    results = cursor.fetchall()
 
-    if results:
-        cursor.close()
-        cn.close()
-        return results
-    else:
-        cursor.close()
-        cn.close()
-        results = None
-        return results
-
-
+"""
 for i in array_pacientes:
     print("Inicio de proceso de registro...")
     array_i = i.split(";")
@@ -109,3 +124,4 @@ for i in array_pacientes:
         renaper = 2
         cndb(renaper_apellido, renaper_nombre, tipodocumento, dni, renaper_fechanacimiento, renaper_sexo, renaper)
         pass
+"""
